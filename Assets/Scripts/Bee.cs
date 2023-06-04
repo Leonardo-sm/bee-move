@@ -6,22 +6,28 @@ public class Bee : MonoBehaviour
 {
     // public float speed = 5f;
     public Rigidbody2D rb2D;
-    public float force = 200f;
+    public float initialBeeForce = 200f;
+    public float boostForce = 0.01f;
+
+    private Vector2 directionForce;
+    private readonly float GravityScaleFactor = 0.5f;
 
     // Start is called before the first frame update
     void Start()
     {
-        rb2D.AddForce(new Vector2(force, 0));
+        rb2D.AddForce(new Vector2(initialBeeForce, 0));
     }
 
     // Update is called once per frame
-    void Update()
+    void FixedUpdate()
     {
-        
+       rb2D.gravityScale = Mathf.Max(rb2D.gravityScale - Time.fixedDeltaTime, 0);
     }
 
     private void OnTriggerEnter2D(Collider2D collision)
     {
+       rb2D.gravityScale = GravityScaleFactor;
+
         if (collision.gameObject.name == "DirectionModifier")
         {
             Debug.Log("Colidiu com o modificador");
@@ -30,9 +36,9 @@ public class Bee : MonoBehaviour
 
            Vector2 direction =  mod.GetDirection();
 
-            Debug.Log(direction);
+          //  directionForce = direction * (initialBeeForce + boostForce);
 
-            rb2D.AddForce(direction * force);
+            rb2D.AddForce(direction * initialBeeForce);
         }
 
         if (collision.gameObject.name == "Tilemap")
