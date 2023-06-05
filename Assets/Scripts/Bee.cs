@@ -4,54 +4,111 @@ using UnityEngine;
 
 public class Bee : MonoBehaviour
 {
-    // public float speed = 5f;
     public Rigidbody2D rb2D;
-    public float initialBeeForce = 200f;
+    public float constantBeeForce = 200f;
+    public float startBeeForce = 100f;
     public float boostForce = 0.01f;
 
-    private Vector2 directionForce;
+    public float acceleration = 1.05f;
+
+    public float deacceleration = 0.95f;
+    public float desiredSpeed = 2f;
+
     private readonly float GravityScaleFactor = 0.5f;
 
-    // Start is called before the first frame update
-    void Start()
+    public GameObject particlePrefab;
+
+    public AudioSource gameSound;
+
+    private void Start()
     {
-        rb2D.AddForce(new Vector2(initialBeeForce, 0));
+        StartCoroutine(SpawnParticleOvertime());
     }
 
-    // Update is called once per frame
+    private void OnDisable()
+    {
+        StopAllCoroutines();
+    }
+
     void FixedUpdate()
     {
-       rb2D.gravityScale = Mathf.Max(rb2D.gravityScale - Time.fixedDeltaTime, 0);
+        if (Input.GetKey(KeyCode.Space))
+        {
+            Vector2 direction = new Vector2(startBeeForce, 0);
+
+            if(gameObject.transform.rotation.y == -1)
+            {
+               direction = new Vector2(-startBeeForce, 0);
+            }
+
+            rb2D.AddForce(direction);
+        }
+
+        rb2D.gravityScale = Mathf.Max(rb2D.gravityScale - Time.fixedDeltaTime, 0);
+
+        float currentSpeed = Vector2.Distance(Vector2.zero, rb2D.velocity);
+
+        if (currentSpeed >= desiredSpeed)
+        {
+            rb2D.velocity *= deacceleration;
+        }
+        else
+        {
+            rb2D.velocity = rb2D.velocity.normalized * desiredSpeed;
+        }
+
     }
 
     private void OnTriggerEnter2D(Collider2D collision)
     {
-       rb2D.gravityScale = GravityScaleFactor;
+        rb2D.gravityScale = GravityScaleFactor;
 
         if (collision.gameObject.name == "DirectionModifier")
         {
-            Debug.Log("Colidiu com o modificador");
+            DirectionModifier mod = collision.gameObject.GetComponent<DirectionModifier>();
 
-           DirectionModifier mod = collision.gameObject.GetComponent<DirectionModifier>();
+            Vector2 direction = mod.GetDirection();
 
-           Vector2 direction =  mod.GetDirection();
+            if(direction[0] < 0){
+                gameObject.transform.Rotate(new Vector3(0f, 180, 0f));
+            }
 
-          //  directionForce = direction * (initialBeeForce + boostForce);
-
-            rb2D.AddForce(direction * initialBeeForce);
+            rb2D.AddForce(direction * constantBeeForce);
         }
+    }
 
-        if (collision.gameObject.name == "Tilemap")
-        {
-            Debug.Log("Colidiu com o tilemap");
-           // Destroy(gameObject);
-        }
+    private void OnCollisionEnter2D(Collision2D collision)
+    {
+        StartCoroutine(ColisionTileMap(collision));
     }
 
     void Death()
     {
-        // [todo] invocar metodo do pivot que reseta o mapa
+        GameState.RestartScene();
+    }
 
-        Destroy(this);
+    IEnumerator ColisionTileMap(Collision2D collision)
+    {
+        if (collision.gameObject.name == "Tilemap")
+        {
+            if (gameSound != null)
+            {
+                gameSound.Play();
+            }
+            yield return new WaitForSeconds(0.15f);
+
+            Death();
+        }
+    }
+
+    public IEnumerator SpawnParticleOvertime()
+    {
+        while (true) {
+            GameObject go = Instantiate(particlePrefab, null);
+
+            go.transform.position = transform.position;
+
+            yield return new WaitForSeconds(0.5f);
+        }
     }
 }
